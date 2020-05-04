@@ -18,32 +18,37 @@
  *
  */
 
-package net.daporkchop.ccpregen;
-
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.Mod.EventHandler;
-import net.minecraftforge.fml.common.event.FMLInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
-import org.apache.logging.log4j.Logger;
-
-@Mod(modid = CCPregen.MODID,
-        name = CCPregen.NAME,
-        version = CCPregen.VERSION,
-        dependencies = "required:cubicchunks@[1.12.2-0.0.1015.0,)",
-        acceptableRemoteVersions = "*")
-public class CCPregen {
-    public static final String MODID = "ccpregen";
-    public static final String NAME = "Cubic Chunks Pregenerator";
-    public static final String VERSION = "0.0.1-1.12.2";
-
-    private static Logger logger;
-
-    @EventHandler
-    public void preInit(FMLPreInitializationEvent event) {
-        logger = event.getModLog();
+pipeline {
+    agent any
+    tools {
+        git "Default"
+        jdk "jdk8"
+    }
+    options {
+        buildDiscarder(logRotator(artifactNumToKeepStr: '5'))
+    }
+    stages {
+        stage("Prepare workspace ") {
+            steps {
+                sh "./gradlew setupCiWorkspace --no-daemon"
+            }
+        }
+        stage("Build") {
+            steps {
+                sh "./gradlew build --no-daemon"
+            }
+            post {
+                success {
+                    sh "bash ./add_jar_suffix.sh " + sh(script: "git log -n 1 --pretty=format:'%H'", returnStdout: true).substring(0, 8) + "-" + env.BRANCH_NAME.replaceAll("[^a-zA-Z0-9.]", "_")
+                    archiveArtifacts artifacts: "build/libs/*.jar", fingerprint: true
+                }
+            }
+        }
     }
 
-    @EventHandler
-    public void init(FMLInitializationEvent event) {
+    post {
+        always {
+            deleteDir()
+        }
     }
 }
