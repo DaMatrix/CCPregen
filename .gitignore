@@ -12,3 +12,5 @@ run/
 # misc.
 *.class
 *.log
+
+classes/
