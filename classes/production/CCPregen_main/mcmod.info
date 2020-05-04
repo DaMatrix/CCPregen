@@ -1,0 +1,18 @@
+[
+  {
+    "modid": "ccpregen",
+    "name": "Cubic Chunks Pregenerator",
+    "description": "Simple pregenerator for Cubic Chunks",
+    "version": "${version}",
+    "mcversion": "${mcversion}",
+    "url": "https://daporkchop.net",
+    "updateUrl": "",
+    "authorList": [
+      "DaPorkchop_"
+    ],
+    "credits": "Barteks2x, for making Cubic Chunks",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": []
+  }
+]

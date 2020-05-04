@@ -20,27 +20,33 @@
 
 package net.daporkchop.ccpregen;
 
+import net.minecraftforge.common.config.Config;
+import net.minecraftforge.common.config.ConfigManager;
+import net.minecraftforge.fml.client.event.ConfigChangedEvent;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.Mod.EventHandler;
-import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
-import net.minecraftforge.server.permission.DefaultPermissionLevel;
-import net.minecraftforge.server.permission.PermissionAPI;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
-@Mod(modid = CCPregen.MODID,
-        name = CCPregen.NAME,
-        version = CCPregen.VERSION,
-        dependencies = "required:cubicchunks@[1.12.2-0.0.1015.0,)",
-        acceptableRemoteVersions = "*")
+/**
+ * @author DaPorkchop_
+ */
+@Config(modid = CCPregen.MODID)
+@Mod.EventBusSubscriber(modid = CCPregen.MODID)
+public class PregenConfig {
+    @Config.Comment("The period (in milliseconds) between progress notification messages.")
+    @Config.RangeInt(min = 1)
+    public static int notificationInterval = 5000;
 
-public class CCPregen {
-    public static final String MODID = "ccpregen";
-    public static final String NAME = "Cubic Chunks Pregenerator";
-    public static final String VERSION = "0.0.1-1.12.2";
+    @Config.Comment({
+            "The maximum number of cubes that may be queued for saving at any one time.",
+            "If more than this number of cubes are queued, pregeneration will be paused until the number drops below this threshold again."
+    })
+    @Config.RangeInt(min = 0)
+    public static int maxSaveQueueSize = 10000;
 
-    @EventHandler
-    public void serverStarting(FMLServerStartingEvent event) {
-        PermissionAPI.registerNode(MODID + ".command.ccpregen", DefaultPermissionLevel.OP, "Allows to run the /ccpregen command");
-
-        event.registerServerCommand(new PregenCommand());
+    @SubscribeEvent
+    public static void onConfigChanged(ConfigChangedEvent.OnConfigChangedEvent event) {
+        if (event.getModID().equals(CCPregen.MODID)) {
+            ConfigManager.sync(CCPregen.MODID, Config.Type.INSTANCE);
+        }
     }
 }
