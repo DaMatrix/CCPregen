@@ -86,7 +86,7 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
 
             if (this.hasWork()) {
                 //generate the chunk at the current position
-                ICube cube = ((ICubeProviderServer) provider).getCube(x, y, z, PregenConfig.requireLight ? ICubeProviderServer.Requirement.LIGHT : ICubeProviderServer.Requirement.POPULATE);
+                ICube cube = ((ICubeProviderServer) provider).getCube(x, y, z, PregenConfig.requirement);
                 if (!cube.isFullyPopulated()) {
                     throw new IllegalStateException("Cube isn't fully populated!");
                 }

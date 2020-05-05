@@ -20,6 +20,7 @@
 
 package net.daporkchop.ccpregen;
 
+import io.github.opencubicchunks.cubicchunks.api.world.ICubeProviderServer;
 import net.minecraftforge.common.config.Config;
 import net.minecraftforge.common.config.ConfigManager;
 import net.minecraftforge.fml.client.event.ConfigChangedEvent;
@@ -43,11 +44,8 @@ public class PregenConfig {
     @Config.RangeInt(min = 0)
     public static int maxSaveQueueSize = 10000;
 
-    @Config.Comment({
-            "Require lighting information to be generated before proceeding to the next cube.",
-            "Note that this may significantly reduce performance."
-    })
-    public static boolean requireLight = true;
+    @Config.Comment("Defines how much work the pregenerator will do before considering a cube to be generated.")
+    public static ICubeProviderServer.Requirement requirement = ICubeProviderServer.Requirement.LIGHT;
 
     @Config.Comment("The period (in generated cubes) between saves of the current state.")
     @Config.RangeInt(min = 1)
