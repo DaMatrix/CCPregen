@@ -18,8 +18,10 @@
  *
  */
 
-package net.daporkchop.ccpregen;
+package net.daporkchop.ccpregen.command;
 
+import net.daporkchop.ccpregen.CCPregen;
+import net.daporkchop.ccpregen.PregenState;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
@@ -35,7 +37,6 @@ import net.minecraftforge.server.permission.PermissionAPI;
  * @author DaPorkchop_
  */
 public class PregenCommand extends CommandBase {
-
     public static BlockPos parseBlockPos(String[] args, int startIndex) throws NumberInvalidException {
         return new BlockPos(
                 parseDouble(0.0d, args[startIndex], -30000000, 30000000, false),
@@ -64,9 +65,9 @@ public class PregenCommand extends CommandBase {
         int dimension = args.length == 6 ? sender.getEntityWorld().provider.getDimension() : parseInt(args[7]);
         if (min.getX() > max.getX() || min.getY() > max.getY() || min.getZ() > max.getZ())  {
             sender.sendMessage(new TextComponentString("Min coordinates may not be greater than max coordinates!"));
-            return;
+        } else if (!PregenState.startPregeneration(sender, min, max, dimension))   {
+            sender.sendMessage(new TextComponentString("A pregeneration task is already running!"));
         }
-        WorldWorkerManager.addWorker(new PregenerationWorker(sender, min, max, dimension));
     }
 
     @Override

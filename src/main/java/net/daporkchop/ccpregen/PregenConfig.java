@@ -49,6 +49,17 @@ public class PregenConfig {
     })
     public static boolean requireLight = true;
 
+    @Config.Comment("The period (in generated cubes) between saves of the current state.")
+    @Config.RangeInt(min = 1)
+    public static int saveStateInterval = 30000;
+
+    @Config.Comment({
+            "The period (in generated cubes) between unloading of all cubes.",
+            "Setting this value too low can seriously degrade performance, setting it too high can cause the server to run out of memory."
+    })
+    @Config.RangeInt(min = 1)
+    public static int unloadCubesInterval = 8000;
+
     @SubscribeEvent
     public static void onConfigChanged(ConfigChangedEvent.OnConfigChangedEvent event) {
         if (event.getModID().equals(CCPregen.MODID)) {

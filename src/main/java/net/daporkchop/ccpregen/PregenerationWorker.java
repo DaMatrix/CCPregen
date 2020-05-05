@@ -26,114 +26,104 @@ import io.github.opencubicchunks.cubicchunks.api.world.ICubicWorldServer;
 import io.github.opencubicchunks.cubicchunks.core.world.ICubeProviderInternal;
 import io.github.opencubicchunks.cubicchunks.core.world.cube.Cube;
 import net.minecraft.command.ICommandSender;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TextComponentString;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.WorldWorkerManager;
+
+import static java.lang.Long.*;
+import static net.daporkchop.ccpregen.PregenState.*;
 
 /**
  * @author DaPorkchop_
  */
 public class PregenerationWorker implements WorldWorkerManager.IWorker {
     private final ICommandSender sender;
-    private final int dim;
-    private final int minX;
-    private final int minY;
-    private final int minZ;
-    private final int maxX;
-    private final int maxY;
-    private final int maxZ;
-    private int y;
-    private int x;
-    private int z;
-    private long remaining;
-    private final long total;
     private long lastMsg = System.currentTimeMillis();
-    private Boolean keepingLoaded;
+    private WorldServer world;
+    private boolean keepingLoaded;
 
-    public PregenerationWorker(ICommandSender sender, BlockPos min, BlockPos max, int dim) {
+    public PregenerationWorker(ICommandSender sender) {
         this.sender = sender;
-        this.dim = dim;
-        this.minX = (min.getX() >> 4) - 1;
-        this.minY = (min.getY() >> 4) - 1;
-        this.minZ = (min.getZ() >> 4) - 1;
-        this.maxX = (max.getX() >> 4) + 1;
-        this.maxY = (max.getY() >> 4) + 1;
-        this.maxZ = (max.getZ() >> 4) + 1;
-        this.y = this.maxY;
-        this.x = this.minX;
-        this.z = this.maxZ;
-        this.remaining = this.total = (long) (this.maxX - this.minX) * (long) (this.maxY - this.minY) * (long) (this.maxZ - this.minZ);
     }
 
     @Override
     public boolean hasWork() {
-        return this.remaining > 0L;
+        return active && parseUnsignedLong(generated) < parseUnsignedLong(total);
     }
 
     @Override
     public boolean doWork() {
-        WorldServer world = DimensionManager.getWorld(this.dim);
-        if (world == null) {
-            DimensionManager.initDimension(this.dim);
-            world = DimensionManager.getWorld(this.dim);
-            if (world == null) {
-                this.sender.sendMessage(new TextComponentString("Unable to load dimension " + this.dim));
-                this.remaining = 0L;
+        if (active) {
+            if (this.world == null) {
+                WorldServer world = DimensionManager.getWorld(dim);
+                if (world == null) {
+                    DimensionManager.initDimension(dim);
+                    world = DimensionManager.getWorld(dim);
+                    if (world == null) {
+                        this.sender.sendMessage(new TextComponentString("Unable to load dimension " + dim));
+                        active = false;
+                        return false;
+                    }
+                }
+                this.world = world;
+                this.keepingLoaded = DimensionManager.keepDimensionLoaded(dim, true);
+            }
+
+            ICubeProviderInternal.Server provider = (ICubeProviderInternal.Server) ((ICubicWorldServer) this.world).getCubeCache();
+            int saveQueueSize = provider.getCubeIO().getPendingCubeCount();
+
+            if (this.lastMsg + PregenConfig.notificationInterval < System.currentTimeMillis()) {
+                this.lastMsg = System.currentTimeMillis();
+                this.sender.sendMessage(new TextComponentString(String.format(
+                        "Generated %s/%s cubes, current block position: (%d, %d, %d), save queue size: %d",
+                        generated, total, x << 4, y << 4, z << 4, saveQueueSize
+                )));
+            }
+            if (saveQueueSize > PregenConfig.maxSaveQueueSize) {
                 return false;
             }
-        }
 
-        ICubeProviderServer provider = ((ICubicWorldServer) world).getCubeCache();
-        int saveQueueSize = ((ICubeProviderInternal.Server) provider).getCubeIO().getPendingCubeCount();
-
-        if (this.lastMsg + PregenConfig.notificationInterval < System.currentTimeMillis()) {
-            this.lastMsg = System.currentTimeMillis();
-            this.sender.sendMessage(new TextComponentString(String.format(
-                    "Generated %d/%d cubes, current block Y: %d, save queue size: %d",
-                    this.total - this.remaining, this.total, this.y << 4, saveQueueSize
-            )));
-        } else if (saveQueueSize > PregenConfig.maxSaveQueueSize) {
-            return false;
-        }
-
-        if (this.keepingLoaded == null) {
-            this.keepingLoaded = DimensionManager.keepDimensionLoaded(this.dim, true);
-        }
-
-        if (this.hasWork()) {
-            //generate the chunk at the current position
-            ICube cube = provider.getCube(this.x, this.y, this.z, PregenConfig.requireLight ? ICubeProviderServer.Requirement.LIGHT : ICubeProviderServer.Requirement.POPULATE);
-            if (!cube.isFullyPopulated()) {
-                throw new IllegalStateException("Cube isn't fully populated!");
-            }
-
-            ((ICubeProviderInternal.Server) provider).getCubeIO().saveCube((Cube) cube);
-            if ((this.remaining & 8191L) == 0L) {
-                ((ICubicWorldServer) world).unloadOldCubes(); //avoid OOM
-            }
-
-            if (++this.z > this.maxZ) {
-                if (++this.x > this.maxX) {
-                    if (--this.y < this.minY) {
-                        if (this.remaining > 1L) {
-                            throw new IllegalStateException(this.remaining + " chunks remaining when we were finished!");
-                        }
-                    }
-                    this.x = this.minX;
+            if (this.hasWork()) {
+                //generate the chunk at the current position
+                ICube cube = ((ICubeProviderServer) provider).getCube(x, y, z, PregenConfig.requireLight ? ICubeProviderServer.Requirement.LIGHT : ICubeProviderServer.Requirement.POPULATE);
+                if (!cube.isFullyPopulated()) {
+                    throw new IllegalStateException("Cube isn't fully populated!");
                 }
-                this.z = this.minZ;
+
+                provider.getCubeIO().saveCube((Cube) cube);
+                if (parseUnsignedLong(generated) % PregenConfig.unloadCubesInterval == 0L) {
+                    ((ICubicWorldServer) this.world).unloadOldCubes(); //avoid OOM
+                }
+
+                if (++z > maxZ) {
+                    if (++x > maxX) {
+                        if (--y < minY) {
+                            if (parseUnsignedLong(generated) < parseUnsignedLong(total) - 1L) {
+                                throw new IllegalStateException(String.format("Iteration finished, but we only generated %s/%s cubes?!?", generated, total));
+                            }
+                        }
+                        x = minX;
+                    }
+                    z = minZ;
+                }
+            }
+
+            generated = String.valueOf(parseUnsignedLong(generated) + 1);
+            if (parseUnsignedLong(generated) % PregenConfig.saveStateInterval == 0) {
+                persistState();
             }
         }
 
-        boolean hasWork = --this.remaining > 0L;
+        boolean hasWork = active && parseUnsignedLong(generated) < parseUnsignedLong(total);
         if (!hasWork) {
             this.sender.sendMessage(new TextComponentString("Generation complete."));
-            if (this.keepingLoaded != null && this.keepingLoaded) {
-                DimensionManager.keepDimensionLoaded(this.dim, false);
+            if (this.world != null && this.keepingLoaded) {
+                DimensionManager.keepDimensionLoaded(dim, false);
             }
-            ((ICubicWorldServer) world).unloadOldCubes();
+            active = false;
+            persistState();
+            ((ICubicWorldServer) this.world).unloadOldCubes();
         }
         return hasWork;
     }

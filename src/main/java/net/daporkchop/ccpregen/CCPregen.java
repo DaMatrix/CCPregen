@@ -20,27 +20,41 @@
 
 package net.daporkchop.ccpregen;
 
+import net.daporkchop.ccpregen.command.PregenCommand;
+import net.daporkchop.ccpregen.command.StopPregenCommand;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventHandler;
+import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
 import net.minecraftforge.server.permission.DefaultPermissionLevel;
 import net.minecraftforge.server.permission.PermissionAPI;
+import org.apache.logging.log4j.Logger;
 
 @Mod(modid = CCPregen.MODID,
         name = CCPregen.NAME,
         version = CCPregen.VERSION,
         dependencies = "required:cubicchunks@[1.12.2-0.0.1015.0,)",
         acceptableRemoteVersions = "*")
-
 public class CCPregen {
     public static final String MODID = "ccpregen";
     public static final String NAME = "Cubic Chunks Pregenerator";
     public static final String VERSION = "0.0.1-1.12.2";
 
+    public static Logger logger;
+
+    @EventHandler
+    public void preInit(FMLPreInitializationEvent event) {
+        logger = event.getModLog();
+    }
+
     @EventHandler
     public void serverStarting(FMLServerStartingEvent event) {
         PermissionAPI.registerNode(MODID + ".command.ccpregen", DefaultPermissionLevel.OP, "Allows to run the /ccpregen command");
+        PermissionAPI.registerNode(MODID + ".command.ccpregen_stop", DefaultPermissionLevel.OP, "Allows to run the /ccpregen_stop command");
 
         event.registerServerCommand(new PregenCommand());
+        event.registerServerCommand(new StopPregenCommand());
+
+        PregenState.loadState(event.getServer());
     }
 }
