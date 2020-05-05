@@ -20,6 +20,7 @@
 
 package net.daporkchop.ccpregen;
 
+import net.daporkchop.ccpregen.util.CoordinateOrder;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TextComponentString;
@@ -53,6 +54,8 @@ public class PregenState {
     public static String generated = "";
     public static String total = "";
 
+    public static CoordinateOrder order = CoordinateOrder.SLICES_TOP_TO_BOTTOM;
+
     public static boolean startPregeneration(ICommandSender sender, BlockPos min, BlockPos max, int dimension) {
         if (active) {
             return false;
@@ -67,11 +70,9 @@ public class PregenState {
         maxX = (max.getX() >> 4) + 1;
         maxY = (max.getY() >> 4) + 1;
         maxZ = (max.getZ() >> 4) + 1;
-        y = maxY;
-        x = minX;
-        z = maxZ;
         generated = "0";
         total = String.valueOf((long) (maxX - minX) * (long) (maxY - minY) * (long) (maxZ - minZ));
+        (order = PregenConfig.order).init();
 
         persistState();
         WorldWorkerManager.addWorker(new PregenerationWorker(sender));

@@ -21,6 +21,7 @@
 package net.daporkchop.ccpregen;
 
 import io.github.opencubicchunks.cubicchunks.api.world.ICubeProviderServer;
+import net.daporkchop.ccpregen.util.CoordinateOrder;
 import net.minecraftforge.common.config.Config;
 import net.minecraftforge.common.config.ConfigManager;
 import net.minecraftforge.fml.client.event.ConfigChangedEvent;
@@ -57,6 +58,21 @@ public class PregenConfig {
     })
     @Config.RangeInt(min = 1)
     public static int unloadCubesInterval = 8000;
+
+    @Config.Comment({
+            "Whether or not columns should also be automatically unloaded every unloadCubesInterval.",
+            "This can provide significant performance benefits when pregenerating very tall areas, since serialization of columns becomes increasingly",
+            "expensive as the heightmap grows. However, for wider areas this can cause high memory usage, and even cause the JVM to completely run out",
+            "of memory."
+    })
+    public static boolean unloadColumns = true;
+
+    @Config.Comment({
+            "The order in which cubes will be generated.",
+            "Slices are 1-cube-tall horizontal planes, columns should be self-explanatory :P",
+            "Cannot be updated retroactively on an already running task."
+    })
+    public static CoordinateOrder order = CoordinateOrder.SLICES_TOP_TO_BOTTOM;
 
     @SubscribeEvent
     public static void onConfigChanged(ConfigChangedEvent.OnConfigChangedEvent event) {

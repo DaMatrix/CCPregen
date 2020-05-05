@@ -23,6 +23,7 @@ package net.daporkchop.ccpregen;
 import io.github.opencubicchunks.cubicchunks.api.world.ICube;
 import io.github.opencubicchunks.cubicchunks.api.world.ICubeProviderServer;
 import io.github.opencubicchunks.cubicchunks.api.world.ICubicWorldServer;
+import io.github.opencubicchunks.cubicchunks.core.server.CubeProviderServer;
 import io.github.opencubicchunks.cubicchunks.core.world.ICubeProviderInternal;
 import io.github.opencubicchunks.cubicchunks.core.world.cube.Cube;
 import net.minecraft.command.ICommandSender;
@@ -31,6 +32,10 @@ import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.WorldWorkerManager;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Iterator;
+
 import static java.lang.Long.*;
 import static net.daporkchop.ccpregen.PregenState.*;
 
@@ -38,6 +43,22 @@ import static net.daporkchop.ccpregen.PregenState.*;
  * @author DaPorkchop_
  */
 public class PregenerationWorker implements WorldWorkerManager.IWorker {
+    private static final Method CUBEPROVIDERSERVER_TRYUNLOADCUBE;
+    private static final Method CUBEPROVIDERSERVER_CUBESITERATOR;
+    private static final Object[] SINGLETON_ARRAY = new Object[1];
+
+    static {
+        try {
+            CUBEPROVIDERSERVER_TRYUNLOADCUBE = CubeProviderServer.class.getDeclaredMethod("tryUnloadCube", Cube.class);
+            CUBEPROVIDERSERVER_TRYUNLOADCUBE.setAccessible(true);
+
+            CUBEPROVIDERSERVER_CUBESITERATOR = CubeProviderServer.class.getDeclaredMethod("cubesIterator");
+            CUBEPROVIDERSERVER_CUBESITERATOR.setAccessible(true);
+        } catch (Exception e)   {
+            throw new RuntimeException(e);
+        }
+    }
+
     private final ICommandSender sender;
     private long lastMsg = System.currentTimeMillis();
     private WorldServer world;
@@ -93,20 +114,25 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
 
                 provider.getCubeIO().saveCube((Cube) cube);
                 if (parseUnsignedLong(generated) % PregenConfig.unloadCubesInterval == 0L) {
-                    ((ICubicWorldServer) this.world).unloadOldCubes(); //avoid OOM
+                    if (PregenConfig.unloadColumns) {
+                        ((ICubicWorldServer) this.world).unloadOldCubes();
+                    } else {
+                        try {
+                            for (Iterator<Cube> itr = (Iterator<Cube>) CUBEPROVIDERSERVER_CUBESITERATOR.invoke(provider); itr.hasNext();)   {
+                                SINGLETON_ARRAY[0] = itr.next();
+                                if ((boolean) CUBEPROVIDERSERVER_TRYUNLOADCUBE.invoke(provider, SINGLETON_ARRAY))    {
+                                    itr.remove();
+                                }
+                            }
+                        } catch (Exception e)   {
+                            throw new RuntimeException(e);
+                        } finally {
+                            SINGLETON_ARRAY[0] = null;
+                        }
+                    }
                 }
 
-                if (++z > maxZ) {
-                    if (++x > maxX) {
-                        if (--y < minY) {
-                            if (parseUnsignedLong(generated) < parseUnsignedLong(total) - 1L) {
-                                throw new IllegalStateException(String.format("Iteration finished, but we only generated %s/%s cubes?!?", generated, total));
-                            }
-                        }
-                        x = minX;
-                    }
-                    z = minZ;
-                }
+                order.next();
             }
 
             generated = String.valueOf(parseUnsignedLong(generated) + 1);
