@@ -2,6 +2,7 @@
 
 [![Build Status](https://jenkins.daporkchop.net/job/Minecraft/job/CCPregen/job/master/badge/icon)](https://jenkins.daporkchop.net/job/Minecraft/job/CCPregen/job/master/)
 
+Compiled jars can be downloaded [from Jenkins](https://jenkins.daporkchop.net/job/Minecraft/job/CCPregen/job/master/)
 
 ### Usage
 

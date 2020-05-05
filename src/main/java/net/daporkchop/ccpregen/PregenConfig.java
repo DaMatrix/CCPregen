@@ -43,6 +43,12 @@ public class PregenConfig {
     @Config.RangeInt(min = 0)
     public static int maxSaveQueueSize = 10000;
 
+    @Config.Comment({
+            "Require lighting information to be generated before proceeding to the next cube.",
+            "Note that this may significantly reduce performance."
+    })
+    public static boolean requireLight = true;
+
     @SubscribeEvent
     public static void onConfigChanged(ConfigChangedEvent.OnConfigChangedEvent event) {
         if (event.getModID().equals(CCPregen.MODID)) {
