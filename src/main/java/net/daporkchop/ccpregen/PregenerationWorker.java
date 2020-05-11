@@ -20,7 +20,7 @@
 
 package net.daporkchop.ccpregen;
 
-import io.github.opencubicchunks.cubicchunks.api.world.ICube;
+import io.github.opencubicchunks.cubicchunks.api.util.XYZMap;
 import io.github.opencubicchunks.cubicchunks.api.world.ICubeProviderServer;
 import io.github.opencubicchunks.cubicchunks.api.world.ICubicWorldServer;
 import io.github.opencubicchunks.cubicchunks.core.server.CubeProviderServer;
@@ -45,6 +45,7 @@ import static net.daporkchop.ccpregen.PregenState.*;
 public class PregenerationWorker implements WorldWorkerManager.IWorker {
     private static final Method CUBEPROVIDERSERVER_TRYUNLOADCUBE;
     private static final Method CUBEPROVIDERSERVER_CUBESITERATOR;
+    private static final Field CUBEPROVIDERSERVER_CUBEMAP;
     private static final Object[] SINGLETON_ARRAY = new Object[1];
 
     static {
@@ -54,7 +55,10 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
 
             CUBEPROVIDERSERVER_CUBESITERATOR = CubeProviderServer.class.getDeclaredMethod("cubesIterator");
             CUBEPROVIDERSERVER_CUBESITERATOR.setAccessible(true);
-        } catch (Exception e)   {
+
+            CUBEPROVIDERSERVER_CUBEMAP = CubeProviderServer.class.getDeclaredField("cubeMap");
+            CUBEPROVIDERSERVER_CUBEMAP.setAccessible(true);
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
@@ -107,24 +111,33 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
 
             if (this.hasWork()) {
                 //generate the chunk at the current position
-                ICube cube = ((ICubeProviderServer) provider).getCube(x, y, z, PregenConfig.requirement);
-                if (!cube.isFullyPopulated()) {
-                    throw new IllegalStateException("Cube isn't fully populated!");
-                }
+                Cube cube = (Cube) ((ICubeProviderServer) provider).getCube(x, y, z, PregenConfig.requirement);
 
-                provider.getCubeIO().saveCube((Cube) cube);
+                provider.getCubeIO().saveCube(cube);
+                if (PregenConfig.immediateCubeUnload) {
+                    try {
+                        SINGLETON_ARRAY[0] = cube;
+                        if ((boolean) CUBEPROVIDERSERVER_TRYUNLOADCUBE.invoke(provider, SINGLETON_ARRAY)) {
+                            ((XYZMap<Cube>) CUBEPROVIDERSERVER_CUBEMAP.get(provider)).remove(cube);
+                        }
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    } finally {
+                        SINGLETON_ARRAY[0] = null;
+                    }
+                }
                 if (parseUnsignedLong(generated) % PregenConfig.unloadCubesInterval == 0L) {
                     if (PregenConfig.unloadColumns) {
                         ((ICubicWorldServer) this.world).unloadOldCubes();
                     } else {
                         try {
-                            for (Iterator<Cube> itr = (Iterator<Cube>) CUBEPROVIDERSERVER_CUBESITERATOR.invoke(provider); itr.hasNext();)   {
+                            for (Iterator<Cube> itr = (Iterator<Cube>) CUBEPROVIDERSERVER_CUBESITERATOR.invoke(provider); itr.hasNext(); ) {
                                 SINGLETON_ARRAY[0] = itr.next();
-                                if ((boolean) CUBEPROVIDERSERVER_TRYUNLOADCUBE.invoke(provider, SINGLETON_ARRAY))    {
+                                if ((boolean) CUBEPROVIDERSERVER_TRYUNLOADCUBE.invoke(provider, SINGLETON_ARRAY)) {
                                     itr.remove();
                                 }
                             }
-                        } catch (Exception e)   {
+                        } catch (Exception e) {
                             throw new RuntimeException(e);
                         } finally {
                             SINGLETON_ARRAY[0] = null;

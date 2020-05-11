@@ -74,6 +74,13 @@ public class PregenConfig {
     })
     public static CoordinateOrder order = CoordinateOrder.SLICES_TOP_TO_BOTTOM;
 
+    @Config.Comment({
+            "Whether or not cubes should be unloaded immediately after they are generated.",
+            "This will cause significant slowdown if the generation requirement is set to anything other than GENERATE, and will likely cause significant",
+            "benefits for GENERATE."
+    })
+    public static boolean immediateCubeUnload = false;
+
     @SubscribeEvent
     public static void onConfigChanged(ConfigChangedEvent.OnConfigChangedEvent event) {
         if (event.getModID().equals(CCPregen.MODID)) {
