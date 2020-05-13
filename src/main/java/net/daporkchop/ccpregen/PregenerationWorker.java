@@ -35,6 +35,8 @@ import net.minecraftforge.common.WorldWorkerManager;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Iterator;
+import java.util.stream.DoubleStream;
+import java.util.stream.Stream;
 
 import static java.lang.Long.*;
 import static net.daporkchop.ccpregen.PregenState.*;
@@ -65,6 +67,8 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
 
     private final ICommandSender sender;
     private long lastMsg = System.currentTimeMillis();
+    private final double[] speeds = new double[10];
+    private int gennedSinceLastNotification = 0;
     private WorldServer world;
     private boolean keepingLoaded;
 
@@ -99,11 +103,16 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
             int saveQueueSize = provider.getCubeIO().getPendingCubeCount();
 
             if (this.lastMsg + PregenConfig.notificationInterval < System.currentTimeMillis()) {
-                this.lastMsg = System.currentTimeMillis();
+                System.arraycopy(this.speeds, 0, this.speeds, 1, this.speeds.length - 1);
+                this.speeds[0] = this.gennedSinceLastNotification * 1000.0d / (double) (System.currentTimeMillis() - this.lastMsg);
+
                 this.sender.sendMessage(new TextComponentString(String.format(
-                        "Generated %s/%s cubes, current block position: (%d, %d, %d), save queue size: %d",
-                        generated, total, x << 4, y << 4, z << 4, saveQueueSize
+                        "Generated %s/%s cubes (%.1f cubes/s), position: (%d, %d, %d), save queue: %d",
+                        generated, total, DoubleStream.of(this.speeds).sum() / this.speeds.length, x << 4, y << 4, z << 4, saveQueueSize
                 )));
+
+                this.gennedSinceLastNotification = 0;
+                this.lastMsg = System.currentTimeMillis();
             }
             if (saveQueueSize > PregenConfig.maxSaveQueueSize) {
                 return false;
@@ -146,6 +155,7 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
                 }
 
                 order.next();
+                this.gennedSinceLastNotification++;
             }
 
             generated = String.valueOf(parseUnsignedLong(generated) + 1);
