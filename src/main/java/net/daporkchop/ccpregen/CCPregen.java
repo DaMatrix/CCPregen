@@ -20,12 +20,15 @@
 
 package net.daporkchop.ccpregen;
 
+import net.daporkchop.ccpregen.command.PausePregenCommand;
 import net.daporkchop.ccpregen.command.PregenCommand;
+import net.daporkchop.ccpregen.command.ResumePregenCommand;
 import net.daporkchop.ccpregen.command.StopPregenCommand;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
+import net.minecraftforge.fml.common.event.FMLServerStoppingEvent;
 import net.minecraftforge.server.permission.DefaultPermissionLevel;
 import net.minecraftforge.server.permission.PermissionAPI;
 import org.apache.logging.log4j.Logger;
@@ -51,10 +54,19 @@ public class CCPregen {
     public void serverStarting(FMLServerStartingEvent event) {
         PermissionAPI.registerNode(MODID + ".command.ccpregen", DefaultPermissionLevel.OP, "Allows to run the /ccpregen command");
         PermissionAPI.registerNode(MODID + ".command.ccpregen_stop", DefaultPermissionLevel.OP, "Allows to run the /ccpregen_stop command");
+        PermissionAPI.registerNode(MODID + ".command.ccpregen_pause", DefaultPermissionLevel.OP, "Allows to run the /ccpregen_pause command");
+        PermissionAPI.registerNode(MODID + ".command.ccpregen_resume", DefaultPermissionLevel.OP, "Allows to run the /ccpregen_resume command");
 
         event.registerServerCommand(new PregenCommand());
         event.registerServerCommand(new StopPregenCommand());
+        event.registerServerCommand(new PausePregenCommand());
+        event.registerServerCommand(new ResumePregenCommand());
 
         PregenState.loadState(event.getServer());
+    }
+
+    @EventHandler
+    public void serverStopping(FMLServerStoppingEvent event)    {
+        PregenState.persistState();
     }
 }

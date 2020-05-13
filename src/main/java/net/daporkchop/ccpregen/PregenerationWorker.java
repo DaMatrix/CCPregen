@@ -36,7 +36,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Iterator;
 import java.util.stream.DoubleStream;
-import java.util.stream.Stream;
 
 import static java.lang.Long.*;
 import static net.daporkchop.ccpregen.PregenState.*;
@@ -118,7 +117,7 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
                 return false;
             }
 
-            if (this.hasWork()) {
+            if (!paused && this.hasWork()) {
                 //generate the chunk at the current position
                 Cube cube = (Cube) ((ICubeProviderServer) provider).getCube(x, y, z, PregenConfig.requirement);
 
@@ -156,11 +155,11 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
 
                 order.next();
                 this.gennedSinceLastNotification++;
-            }
 
-            generated = String.valueOf(parseUnsignedLong(generated) + 1);
-            if (parseUnsignedLong(generated) % PregenConfig.saveStateInterval == 0) {
-                persistState();
+                generated = String.valueOf(parseUnsignedLong(generated) + 1);
+                if (parseUnsignedLong(generated) % PregenConfig.saveStateInterval == 0) {
+                    persistState();
+                }
             }
         }
 
@@ -174,6 +173,6 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
             persistState();
             ((ICubicWorldServer) this.world).unloadOldCubes();
         }
-        return hasWork;
+        return !paused && hasWork;
     }
 }

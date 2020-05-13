@@ -38,6 +38,7 @@ public class PregenState {
             "Set to false to abort an ongoing pregeneration task."
     })
     public static boolean active = false;
+    public static boolean paused = false;
 
     public static int dim;
     public static int minX;
@@ -63,6 +64,7 @@ public class PregenState {
             active = true;
         }
 
+        paused = false;
         dim = dimension;
         minX = (min.getX() >> 4) - 1;
         minY = (min.getY() >> 4) - 1;
