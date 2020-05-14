@@ -73,7 +73,7 @@ public class PregenState {
         maxY = (max.getY() >> 4) + 1;
         maxZ = (max.getZ() >> 4) + 1;
         generated = "0";
-        total = String.valueOf((long) (maxX - minX) * (long) (maxY - minY) * (long) (maxZ - minZ));
+        total = String.valueOf((maxX - minX + 1L) * (maxY - minY + 1L) * (maxZ - minZ + 1L));
         (order = PregenConfig.order).init();
 
         persistState();
@@ -83,6 +83,7 @@ public class PregenState {
 
     public static void loadState(ICommandSender sender) {
         if (active) {
+            total = String.valueOf((maxX - minX + 1L) * (maxY - minY + 1L) * (maxZ - minZ + 1L));
             sender.sendMessage(new TextComponentString("Resuming pregeneration..."));
             WorldWorkerManager.addWorker(new PregenerationWorker(sender));
         }
