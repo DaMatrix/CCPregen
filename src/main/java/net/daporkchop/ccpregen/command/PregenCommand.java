@@ -29,6 +29,7 @@ import net.minecraft.command.NumberInvalidException;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.text.TextComponentString;
 import net.minecraftforge.common.WorldWorkerManager;
 import net.minecraftforge.server.permission.PermissionAPI;
@@ -37,11 +38,12 @@ import net.minecraftforge.server.permission.PermissionAPI;
  * @author DaPorkchop_
  */
 public class PregenCommand extends CommandBase {
-    public static BlockPos parseBlockPos(String[] args, int startIndex) throws NumberInvalidException {
+    public static BlockPos parseBlockPos(ICommandSender sender, String[] args, int startIndex) throws NumberInvalidException {
+        Vec3d base = sender.getPositionVector();
         return new BlockPos(
-                parseDouble(0.0d, args[startIndex], -30000000, 30000000, false),
-                parseDouble(0.0d, args[startIndex + 1], Integer.MIN_VALUE, Integer.MAX_VALUE, false),
-                parseDouble(0.0d, args[startIndex + 2], -30000000, 30000000, false));
+                parseDouble(base.x, args[startIndex], -30000000, 30000000, false),
+                parseDouble(base.y, args[startIndex + 1], Integer.MIN_VALUE, Integer.MAX_VALUE, false),
+                parseDouble(base.z, args[startIndex + 2], -30000000, 30000000, false));
     }
 
     @Override
@@ -60,8 +62,8 @@ public class PregenCommand extends CommandBase {
             sender.sendMessage(new TextComponentString(this.getUsage(sender)));
             return;
         }
-        BlockPos min = parseBlockPos(args, 0);
-        BlockPos max = parseBlockPos(args, 3);
+        BlockPos min = parseBlockPos(sender, args, 0);
+        BlockPos max = parseBlockPos(sender, args, 3);
         int dimension = args.length == 6 ? sender.getEntityWorld().provider.getDimension() : parseInt(args[7]);
         if (min.getX() > max.getX() || min.getY() > max.getY() || min.getZ() > max.getZ())  {
             sender.sendMessage(new TextComponentString("Min coordinates may not be greater than max coordinates!"));

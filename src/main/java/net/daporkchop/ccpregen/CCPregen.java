@@ -41,7 +41,7 @@ import org.apache.logging.log4j.Logger;
 public class CCPregen {
     public static final String MODID = "ccpregen";
     public static final String NAME = "Cubic Chunks Pregenerator";
-    public static final String VERSION = "0.0.1-1.12.2";
+    public static final String VERSION = "0.0.4-1.12.2";
 
     public static Logger logger;
 
