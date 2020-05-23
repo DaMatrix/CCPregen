@@ -58,6 +58,13 @@ public class PregenState {
     public static CoordinateOrder order = CoordinateOrder.SLICES_TOP_TO_BOTTOM;
 
     public static boolean startPregeneration(ICommandSender sender, BlockPos min, BlockPos max, int dimension) {
+        return startPregenerationCubes(sender,
+                new BlockPos(min.getX() >> 4, min.getY() >> 4, min.getZ() >> 4).add(-1, -1, -1),
+                new BlockPos(max.getX() >> 4, max.getY() >> 4, max.getZ() >> 4).add(1, 1, 1),
+                dimension);
+    }
+
+    public static boolean startPregenerationCubes(ICommandSender sender, BlockPos min, BlockPos max, int dimension) {
         if (active) {
             return false;
         } else {
@@ -66,12 +73,12 @@ public class PregenState {
 
         paused = false;
         dim = dimension;
-        minX = (min.getX() >> 4) - 1;
-        minY = (min.getY() >> 4) - 1;
-        minZ = (min.getZ() >> 4) - 1;
-        maxX = (max.getX() >> 4) + 1;
-        maxY = (max.getY() >> 4) + 1;
-        maxZ = (max.getZ() >> 4) + 1;
+        minX = min.getX();
+        minY = min.getY();
+        minZ = min.getZ();
+        maxX = max.getX();
+        maxY = max.getY();
+        maxZ = max.getZ();
         generated = "0";
         total = String.valueOf((maxX - minX + 1L) * (maxY - minY + 1L) * (maxZ - minZ + 1L));
         (order = PregenConfig.order).init();

@@ -22,6 +22,7 @@ package net.daporkchop.ccpregen;
 
 import net.daporkchop.ccpregen.command.PausePregenCommand;
 import net.daporkchop.ccpregen.command.PregenCommand;
+import net.daporkchop.ccpregen.command.PregenCubesCommand;
 import net.daporkchop.ccpregen.command.ResumePregenCommand;
 import net.daporkchop.ccpregen.command.StopPregenCommand;
 import net.minecraftforge.fml.common.Mod;
@@ -53,11 +54,13 @@ public class CCPregen {
     @EventHandler
     public void serverStarting(FMLServerStartingEvent event) {
         PermissionAPI.registerNode(MODID + ".command.ccpregen", DefaultPermissionLevel.OP, "Allows to run the /ccpregen command");
+        PermissionAPI.registerNode(MODID + ".command.ccpregen_cubes", DefaultPermissionLevel.OP, "Allows to run the /ccpregen_cubes command");
         PermissionAPI.registerNode(MODID + ".command.ccpregen_stop", DefaultPermissionLevel.OP, "Allows to run the /ccpregen_stop command");
         PermissionAPI.registerNode(MODID + ".command.ccpregen_pause", DefaultPermissionLevel.OP, "Allows to run the /ccpregen_pause command");
         PermissionAPI.registerNode(MODID + ".command.ccpregen_resume", DefaultPermissionLevel.OP, "Allows to run the /ccpregen_resume command");
 
         event.registerServerCommand(new PregenCommand());
+        event.registerServerCommand(new PregenCubesCommand());
         event.registerServerCommand(new StopPregenCommand());
         event.registerServerCommand(new PausePregenCommand());
         event.registerServerCommand(new ResumePregenCommand());
