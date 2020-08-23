@@ -1,0 +1,10 @@
+{
+  "homepage": "https://github.com/DaMatrix/CCPregen",
+  "promos": {
+    "1.12.2-latest": "0.0.17",
+    "1.12.2-recommended": "0.0.17"
+  },
+  "1.12.2": {
+    "0.0.17": "Fixed NPE when pregeneration finishes before the world is loaded."
+  }
+}

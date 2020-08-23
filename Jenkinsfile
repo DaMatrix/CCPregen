@@ -28,18 +28,17 @@ pipeline {
         buildDiscarder(logRotator(artifactNumToKeepStr: '5'))
     }
     stages {
-        stage("Prepare workspace ") {
+        stage("Prepare workspace") {
             steps {
-                sh "./gradlew setupCiWorkspace --no-daemon"
+                sh "./gradlew setupCiWorkspace"
             }
         }
         stage("Build") {
             steps {
-                sh "./gradlew build --no-daemon"
+                sh "./gradlew build"
             }
             post {
                 success {
-                    sh "bash ./add_jar_suffix.sh " + sh(script: "git log -n 1 --pretty=format:'%H'", returnStdout: true).substring(0, 8) + "-" + env.BRANCH_NAME.replaceAll("[^a-zA-Z0-9.]", "_")
                     archiveArtifacts artifacts: "build/libs/*.jar", fingerprint: true
                 }
             }
@@ -48,6 +47,7 @@ pipeline {
 
     post {
         always {
+            sh "./gradlew --stop"
             deleteDir()
         }
     }

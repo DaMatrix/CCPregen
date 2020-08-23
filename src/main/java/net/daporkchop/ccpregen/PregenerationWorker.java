@@ -166,12 +166,15 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
         boolean hasWork = active && parseUnsignedLong(generated) < parseUnsignedLong(total);
         if (!hasWork) {
             this.sender.sendMessage(new TextComponentString("Generation complete."));
-            if (this.world != null && this.keepingLoaded) {
-                DimensionManager.keepDimensionLoaded(dim, false);
+            if (this.world != null) {
+                ((ICubicWorldServer) this.world).unloadOldCubes();
+                if (this.keepingLoaded) {
+                    //allow world to be unloaded
+                    DimensionManager.keepDimensionLoaded(dim, false);
+                }
             }
             active = false;
             persistState();
-            ((ICubicWorldServer) this.world).unloadOldCubes();
         }
         return !paused && hasWork;
     }

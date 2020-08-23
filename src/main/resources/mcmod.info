@@ -5,8 +5,8 @@
     "description": "Simple pregenerator for Cubic Chunks",
     "version": "${version}",
     "mcversion": "${mcversion}",
-    "url": "https://daporkchop.net",
-    "updateUrl": "",
+    "url": "https://github.com/DaMatrix/CCPregen",
+    "updateUrl": "https://raw.githubusercontent.com/DaMatrix/CCPregen/master/update.json",
     "authorList": [
       "DaPorkchop_"
     ],

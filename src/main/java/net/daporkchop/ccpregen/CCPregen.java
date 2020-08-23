@@ -35,20 +35,17 @@ import net.minecraftforge.server.permission.PermissionAPI;
 import org.apache.logging.log4j.Logger;
 
 @Mod(modid = CCPregen.MODID,
-        name = CCPregen.NAME,
-        version = CCPregen.VERSION,
+        useMetadata = true,
         dependencies = "required:cubicchunks@[1.12.2-0.0.1015.0,)",
         acceptableRemoteVersions = "*")
 public class CCPregen {
     public static final String MODID = "ccpregen";
-    public static final String NAME = "Cubic Chunks Pregenerator";
-    public static final String VERSION = "0.0.4-1.12.2";
 
-    public static Logger logger;
+    public static Logger LOGGER;
 
     @EventHandler
     public void preInit(FMLPreInitializationEvent event) {
-        logger = event.getModLog();
+        LOGGER = event.getModLog();
     }
 
     @EventHandler
