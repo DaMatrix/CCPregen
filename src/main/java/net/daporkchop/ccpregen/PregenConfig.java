@@ -82,9 +82,10 @@ public class PregenConfig {
     public static boolean immediateCubeUnload = false;
 
     @Config.Comment({
-            "The number of cubes to prefetch at once, assuming the generator supports async terrain generation."
+            "The number of cubes to prefetch at once, assuming the generator supports async terrain generation.",
+            "Set to 0 by default, as most generators don't benefit from this."
     })
-    public static int asyncPrefetchCount = 64;
+    public static int asyncPrefetchCount = 0;
 
     @SubscribeEvent
     public static void onConfigChanged(ConfigChangedEvent.OnConfigChangedEvent event) {

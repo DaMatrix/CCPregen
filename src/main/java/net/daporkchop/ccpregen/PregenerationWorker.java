@@ -20,15 +20,20 @@
 
 package net.daporkchop.ccpregen;
 
+import io.github.opencubicchunks.cubicchunks.api.util.CubePos;
 import io.github.opencubicchunks.cubicchunks.api.util.XYZMap;
 import io.github.opencubicchunks.cubicchunks.api.world.ICubeProviderServer;
 import io.github.opencubicchunks.cubicchunks.api.world.ICubicWorldServer;
+import io.github.opencubicchunks.cubicchunks.api.worldgen.ICubeGenerator;
 import io.github.opencubicchunks.cubicchunks.core.CubicChunks;
 import io.github.opencubicchunks.cubicchunks.core.server.CubeProviderServer;
 import io.github.opencubicchunks.cubicchunks.core.world.ICubeProviderInternal;
 import io.github.opencubicchunks.cubicchunks.core.world.cube.Cube;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.command.ICommandSender;
+import net.minecraft.util.text.Style;
 import net.minecraft.util.text.TextComponentString;
+import net.minecraft.util.text.TextFormatting;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.WorldWorkerManager;
@@ -38,9 +43,9 @@ import net.minecraftforge.fml.common.ModContainer;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.stream.DoubleStream;
 
-import static java.lang.Long.*;
 import static net.daporkchop.ccpregen.PregenState.*;
 
 /**
@@ -77,8 +82,13 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
     private long lastMsg = System.currentTimeMillis();
     private final double[] speeds = new double[10];
     private int gennedSinceLastNotification = 0;
+    private int pendingAsync;
     private WorldServer world;
     private boolean keepingLoaded;
+    private CubePos printedFailWarning;
+
+    private CubePos lastPrefetchPos;
+    private Set<CubePos> alreadyCheckedCubes = new ObjectOpenHashSet<>();
 
     public PregenerationWorker(ICommandSender sender) {
         this.sender = sender;
@@ -91,6 +101,8 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
 
     @Override
     public boolean doWork() {
+        boolean generated;
+
         if (active) {
             if (this.world == null) {
                 WorldServer world = DimensionManager.getWorld(dim);
@@ -115,58 +127,22 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
                 this.speeds[0] = this.gennedSinceLastNotification * 1000.0d / (double) (System.currentTimeMillis() - this.lastMsg);
 
                 this.sender.sendMessage(new TextComponentString(String.format(
-                        "Generated %d/%d cubes (%.1f cubes/s), position: %s, save queue: %d",
-                        generated, volume.total, DoubleStream.of(this.speeds).sum() / this.speeds.length, pos, saveQueueSize
+                        "Generated %d/%d cubes (%.1f cubes/s), position: %s, save queue: %d, pending (async): %d",
+                        PregenState.generated, volume.total, DoubleStream.of(this.speeds).sum() / this.speeds.length, pos, saveQueueSize, this.pendingAsync
                 )));
 
                 this.gennedSinceLastNotification = 0;
                 this.lastMsg = System.currentTimeMillis();
             }
-            if (saveQueueSize > PregenConfig.maxSaveQueueSize) {
+            if (saveQueueSize > PregenConfig.maxSaveQueueSize) { //don't do anything until the save queue can be flushed a bit
                 return false;
             }
 
             if (!paused && this.hasWork()) {
-                //generate the chunk at the current position
-                Cube cube = (Cube) ((ICubeProviderServer) provider).getCube(pos.getX(), pos.getY(), pos.getZ(), PregenConfig.requirement);
-
-                provider.getCubeIO().saveCube(cube);
-                if (PregenConfig.immediateCubeUnload) {
-                    try {
-                        SINGLETON_ARRAY[0] = cube;
-                        if ((boolean) CUBEPROVIDERSERVER_TRYUNLOADCUBE.invoke(provider, SINGLETON_ARRAY)) {
-                            ((XYZMap<Cube>) CUBEPROVIDERSERVER_CUBEMAP.get(provider)).remove(cube);
-                        }
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    } finally {
-                        SINGLETON_ARRAY[0] = null;
-                    }
-                }
-                if (generated % PregenConfig.unloadCubesInterval == 0L) {
-                    if (PregenConfig.unloadColumns) {
-                        ((ICubicWorldServer) this.world).unloadOldCubes();
-                    } else {
-                        try {
-                            for (Iterator<Cube> itr = (Iterator<Cube>) CUBEPROVIDERSERVER_CUBESITERATOR.invoke(provider); itr.hasNext(); ) {
-                                SINGLETON_ARRAY[0] = itr.next();
-                                if ((boolean) CUBEPROVIDERSERVER_TRYUNLOADCUBE.invoke(provider, SINGLETON_ARRAY)) {
-                                    itr.remove();
-                                }
-                            }
-                        } catch (Exception e) {
-                            throw new RuntimeException(e);
-                        } finally {
-                            SINGLETON_ARRAY[0] = null;
-                        }
-                    }
-                }
-
-                pos = order.next(volume, pos);
-                this.gennedSinceLastNotification++;
-
-                if (++generated % PregenConfig.saveStateInterval == 0) {
-                    persistState();
+                if (ASYNC_TERRAIN && PregenConfig.asyncPrefetchCount > 0) {
+                    generated = this.generateCubeAsync(provider);
+                } else {
+                    generated = this.generateCubeBlocking(provider);
                 }
             }
         }
@@ -185,5 +161,97 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
             persistState();
         }
         return !paused && hasWork;
+    }
+
+    private boolean generateCubeAsync(ICubeProviderInternal.Server provider) {
+        boolean generated = false;
+
+        ICubeGenerator generator = ((ICubicWorldServer) this.world).getCubeGenerator();
+        switch (this.poll(generator, pos.getX(), pos.getY(), pos.getZ())) {
+            case READY: //generator reports the cube is ready to be generated
+                this.alreadyCheckedCubes.remove(pos);
+
+                //generate the cube
+                generated = this.generateCubeBlocking(provider);
+                break;
+            case WAITING: //do nothing
+                break;
+            case FAIL: //the cube failed?!?
+                if (!pos.equals(this.printedFailWarning)) {
+                    this.printedFailWarning = pos;
+                    this.sender.sendMessage(new TextComponentString("The generator reported that async prefetching of the cube at " + pos + " failed!")
+                            .setStyle(new Style().setColor(TextFormatting.RED)));
+                    this.sender.sendMessage(new TextComponentString("This is very likely to cause pregeneration to hang/stall indefinitely!")
+                            .setStyle(new Style().setColor(TextFormatting.RED)));
+                }
+        }
+
+        CubePos nextPos = pos;
+        this.pendingAsync = 0;
+        for (int i = 0; i < PregenConfig.asyncPrefetchCount && (nextPos = order.next(volume, nextPos)) != null; i++) {
+            if (this.poll(generator, nextPos.getX(), nextPos.getY(), nextPos.getZ()) == ICubeGenerator.GeneratorReadyState.WAITING) {
+                this.pendingAsync++;
+            }
+        }
+
+        return generated;
+    }
+
+    private ICubeGenerator.GeneratorReadyState poll(ICubeGenerator generator, int x, int y, int z) {
+        if (PregenConfig.requirement.ordinal() >= ICubeProviderServer.Requirement.POPULATE.ordinal()) {
+            return generator.pollAsyncCubePopulator(x, y, z);
+        } else {
+            return generator.pollAsyncCubeGenerator(x, y, z);
+        }
+    }
+
+    private boolean generateCubeBlocking(ICubeProviderInternal.Server provider) {
+        //generate the chunk at the current position
+        Cube cube = (Cube) ((ICubeProviderServer) provider).getCube(pos.getX(), pos.getY(), pos.getZ(), PregenConfig.requirement);
+
+        this.postGenerateCube(provider, cube);
+
+        return true;
+    }
+
+    private void postGenerateCube(ICubeProviderInternal.Server provider, Cube cube) {
+        provider.getCubeIO().saveCube(cube);
+        if (PregenConfig.immediateCubeUnload) {
+            try {
+                SINGLETON_ARRAY[0] = cube;
+                if ((boolean) CUBEPROVIDERSERVER_TRYUNLOADCUBE.invoke(provider, SINGLETON_ARRAY)) {
+                    ((XYZMap<Cube>) CUBEPROVIDERSERVER_CUBEMAP.get(provider)).remove(cube);
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            } finally {
+                SINGLETON_ARRAY[0] = null;
+            }
+        }
+        if (generated % PregenConfig.unloadCubesInterval == 0L) {
+            if (PregenConfig.unloadColumns) {
+                ((ICubicWorldServer) this.world).unloadOldCubes();
+            } else {
+                try {
+                    for (Iterator<Cube> itr = (Iterator<Cube>) CUBEPROVIDERSERVER_CUBESITERATOR.invoke(provider); itr.hasNext(); ) {
+                        SINGLETON_ARRAY[0] = itr.next();
+                        if ((boolean) CUBEPROVIDERSERVER_TRYUNLOADCUBE.invoke(provider, SINGLETON_ARRAY)) {
+                            itr.remove();
+                        }
+                    }
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                } finally {
+                    SINGLETON_ARRAY[0] = null;
+                }
+            }
+        }
+
+        pos = order.next(volume, pos);
+        this.gennedSinceLastNotification++;
+
+        if (++generated % PregenConfig.saveStateInterval == 0) {
+            persistState();
+        }
     }
 }
