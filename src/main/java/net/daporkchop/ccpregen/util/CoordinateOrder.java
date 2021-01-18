@@ -1,7 +1,7 @@
 /*
  * Adapted from The MIT License (MIT)
  *
- * Copyright (c) 2020-2020 DaPorkchop_
+ * Copyright (c) 2020-2021 DaPorkchop_
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,
@@ -20,8 +20,7 @@
 
 package net.daporkchop.ccpregen.util;
 
-import static java.lang.Long.*;
-import static net.daporkchop.ccpregen.PregenState.*;
+import io.github.opencubicchunks.cubicchunks.api.util.CubePos;
 
 /**
  * @author DaPorkchop_
@@ -29,98 +28,98 @@ import static net.daporkchop.ccpregen.PregenState.*;
 public enum CoordinateOrder {
     SLICES_TOP_TO_BOTTOM {
         @Override
-        public void init() {
-            x = minX;
-            y = maxY;
-            z = minZ;
+        public CubePos startPos(Volume volume) {
+            return new CubePos(volume.minX, volume.maxY, volume.minZ);
         }
 
         @Override
-        public void next() {
-            if (++x > maxX) {
-                if (++z > maxZ) {
-                    if (--y < minY) {
-                        if (parseUnsignedLong(generated) < parseUnsignedLong(total) - 1L) {
-                            throw new IllegalStateException(String.format("Iteration finished, but we only generated %s/%s cubes?!?", generated, total));
-                        }
+        public CubePos next(Volume volume, CubePos curr) {
+            int x = curr.getX();
+            int y = curr.getY();
+            int z = curr.getZ();
+            if (++x > volume.maxX) {
+                x = volume.minX;
+                if (++z > volume.maxZ) {
+                    z = volume.minZ;
+                    if (--y < volume.minY) {
+                        return null;
                     }
-                    z = minZ;
                 }
-                x = minX;
             }
+            return new CubePos(x, y, z);
         }
     },
     SLICES_BOTTOM_TO_TOP {
         @Override
-        public void init() {
-            x = minX;
-            y = minY;
-            z = minZ;
+        public CubePos startPos(Volume volume) {
+            return new CubePos(volume.minX, volume.minY, volume.minZ);
         }
 
         @Override
-        public void next() {
-            if (++x > maxX) {
-                if (++z > maxZ) {
-                    if (++y > maxY) {
-                        if (parseUnsignedLong(generated) < parseUnsignedLong(total) - 1L) {
-                            throw new IllegalStateException(String.format("Iteration finished, but we only generated %s/%s cubes?!?", generated, total));
-                        }
+        public CubePos next(Volume volume, CubePos curr) {
+            int x = curr.getX();
+            int y = curr.getY();
+            int z = curr.getZ();
+            if (++x > volume.maxX) {
+                x = volume.minX;
+                if (++z > volume.maxZ) {
+                    z = volume.minZ;
+                    if (++y > volume.maxY) {
+                        return null;
                     }
-                    z = minZ;
                 }
-                x = minX;
             }
+            return new CubePos(x, y, z);
         }
     },
     COLUMNS_TOP_TO_BOTTOM {
         @Override
-        public void init() {
-            x = minX;
-            y = maxY;
-            z = minZ;
+        public CubePos startPos(Volume volume) {
+            return new CubePos(volume.minX, volume.maxY, volume.minZ);
         }
 
         @Override
-        public void next() {
-            if (--y < minY) {
-                if (++x > maxX) {
-                    if (++z > maxZ) {
-                        if (parseUnsignedLong(generated) < parseUnsignedLong(total) - 1L) {
-                            throw new IllegalStateException(String.format("Iteration finished, but we only generated %s/%s cubes?!?", generated, total));
-                        }
+        public CubePos next(Volume volume, CubePos curr) {
+            int x = curr.getX();
+            int y = curr.getY();
+            int z = curr.getZ();
+            if (--y < volume.minY) {
+                y = volume.maxY;
+                if (++x > volume.maxX) {
+                    x = volume.minX;
+                    if (++z > volume.maxZ) {
+                        return null;
                     }
-                    x = minX;
                 }
-                y = maxY;
             }
+            return new CubePos(x, y, z);
         }
     },
     COLUMNS_BOTTOM_TO_TOP {
         @Override
-        public void init() {
-            x = minX;
-            y = minY;
-            z = minZ;
+        public CubePos startPos(Volume volume) {
+            return new CubePos(volume.minX, volume.minY, volume.minZ);
         }
 
         @Override
-        public void next() {
-            if (++y > maxY) {
-                if (++x > maxX) {
-                    if (++z > maxZ) {
-                        if (parseUnsignedLong(generated) < parseUnsignedLong(total) - 1L) {
-                            throw new IllegalStateException(String.format("Iteration finished, but we only generated %s/%s cubes?!?", generated, total));
-                        }
+        public CubePos next(Volume volume, CubePos curr) {
+            int x = curr.getX();
+            int y = curr.getY();
+            int z = curr.getZ();
+            if (++y > volume.maxY) {
+                y = volume.minY;
+                if (++x > volume.maxX) {
+                    x = volume.minX;
+                    if (++z > volume.maxZ) {
+                        return null;
                     }
-                    x = minX;
                 }
-                y = minY;
             }
+            return new CubePos(x, y, z);
         }
     };
 
-    public abstract void init();
+    public abstract CubePos startPos(Volume volume);
 
-    public abstract void next();
+    public abstract CubePos next(Volume volume, CubePos curr);
 }

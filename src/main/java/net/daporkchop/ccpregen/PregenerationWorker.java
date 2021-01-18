@@ -1,7 +1,7 @@
 /*
  * Adapted from The MIT License (MIT)
  *
- * Copyright (c) 2020-2020 DaPorkchop_
+ * Copyright (c) 2020-2021 DaPorkchop_
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,
@@ -23,6 +23,7 @@ package net.daporkchop.ccpregen;
 import io.github.opencubicchunks.cubicchunks.api.util.XYZMap;
 import io.github.opencubicchunks.cubicchunks.api.world.ICubeProviderServer;
 import io.github.opencubicchunks.cubicchunks.api.world.ICubicWorldServer;
+import io.github.opencubicchunks.cubicchunks.core.CubicChunks;
 import io.github.opencubicchunks.cubicchunks.core.server.CubeProviderServer;
 import io.github.opencubicchunks.cubicchunks.core.world.ICubeProviderInternal;
 import io.github.opencubicchunks.cubicchunks.core.world.cube.Cube;
@@ -31,6 +32,8 @@ import net.minecraft.util.text.TextComponentString;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.WorldWorkerManager;
+import net.minecraftforge.fml.common.Loader;
+import net.minecraftforge.fml.common.ModContainer;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -49,6 +52,8 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
     private static final Field CUBEPROVIDERSERVER_CUBEMAP;
     private static final Object[] SINGLETON_ARRAY = new Object[1];
 
+    private static final boolean ASYNC_TERRAIN;
+
     static {
         try {
             CUBEPROVIDERSERVER_TRYUNLOADCUBE = CubeProviderServer.class.getDeclaredMethod("tryUnloadCube", Cube.class);
@@ -62,6 +67,10 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+
+        ModContainer cubicchunks = Loader.instance().getIndexedModList().get(CubicChunks.MODID);
+        String asyncVersion = "1.12.2-0.0.1175.0"; //the version at which the async terrain gen api was added
+        ASYNC_TERRAIN = asyncVersion.compareTo(cubicchunks.getVersion()) <= 0;
     }
 
     private final ICommandSender sender;
@@ -77,7 +86,7 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
 
     @Override
     public boolean hasWork() {
-        return active && parseUnsignedLong(generated) < parseUnsignedLong(total);
+        return active && pos != null;
     }
 
     @Override
@@ -106,8 +115,8 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
                 this.speeds[0] = this.gennedSinceLastNotification * 1000.0d / (double) (System.currentTimeMillis() - this.lastMsg);
 
                 this.sender.sendMessage(new TextComponentString(String.format(
-                        "Generated %s/%s cubes (%.1f cubes/s), position: (%d, %d, %d), save queue: %d",
-                        generated, total, DoubleStream.of(this.speeds).sum() / this.speeds.length, x << 4, y << 4, z << 4, saveQueueSize
+                        "Generated %d/%d cubes (%.1f cubes/s), position: %s, save queue: %d",
+                        generated, volume.total, DoubleStream.of(this.speeds).sum() / this.speeds.length, pos, saveQueueSize
                 )));
 
                 this.gennedSinceLastNotification = 0;
@@ -119,7 +128,7 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
 
             if (!paused && this.hasWork()) {
                 //generate the chunk at the current position
-                Cube cube = (Cube) ((ICubeProviderServer) provider).getCube(x, y, z, PregenConfig.requirement);
+                Cube cube = (Cube) ((ICubeProviderServer) provider).getCube(pos.getX(), pos.getY(), pos.getZ(), PregenConfig.requirement);
 
                 provider.getCubeIO().saveCube(cube);
                 if (PregenConfig.immediateCubeUnload) {
@@ -134,7 +143,7 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
                         SINGLETON_ARRAY[0] = null;
                     }
                 }
-                if (parseUnsignedLong(generated) % PregenConfig.unloadCubesInterval == 0L) {
+                if (generated % PregenConfig.unloadCubesInterval == 0L) {
                     if (PregenConfig.unloadColumns) {
                         ((ICubicWorldServer) this.world).unloadOldCubes();
                     } else {
@@ -153,17 +162,16 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
                     }
                 }
 
-                order.next();
+                pos = order.next(volume, pos);
                 this.gennedSinceLastNotification++;
 
-                generated = String.valueOf(parseUnsignedLong(generated) + 1);
-                if (parseUnsignedLong(generated) % PregenConfig.saveStateInterval == 0) {
+                if (++generated % PregenConfig.saveStateInterval == 0) {
                     persistState();
                 }
             }
         }
 
-        boolean hasWork = active && parseUnsignedLong(generated) < parseUnsignedLong(total);
+        boolean hasWork = active && pos != null;
         if (!hasWork) {
             this.sender.sendMessage(new TextComponentString("Generation complete."));
             if (this.world != null) {

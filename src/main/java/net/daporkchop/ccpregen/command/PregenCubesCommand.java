@@ -1,7 +1,7 @@
 /*
  * Adapted from The MIT License (MIT)
  *
- * Copyright (c) 2020-2020 DaPorkchop_
+ * Copyright (c) 2020-2021 DaPorkchop_
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,
@@ -20,6 +20,7 @@
 
 package net.daporkchop.ccpregen.command;
 
+import io.github.opencubicchunks.cubicchunks.api.util.CubePos;
 import net.daporkchop.ccpregen.CCPregen;
 import net.daporkchop.ccpregen.PregenState;
 import net.minecraft.command.CommandBase;
@@ -64,7 +65,7 @@ public class PregenCubesCommand extends CommandBase {
         int dimension = args.length == 6 ? sender.getEntityWorld().provider.getDimension() : parseInt(args[7]);
         if (min.getX() > max.getX() || min.getY() > max.getY() || min.getZ() > max.getZ())  {
             sender.sendMessage(new TextComponentString("Min cube coordinates may not be greater than max cube coordinates!"));
-        } else if (!PregenState.startPregenerationCubes(sender, min, max, dimension))   {
+        } else if (!PregenState.startPregenerationCubes(sender, new CubePos(min.getX(), min.getY(), min.getZ()), new CubePos(max.getX(), max.getY(), max.getZ()), dimension))   {
             sender.sendMessage(new TextComponentString("A pregeneration task is already running!"));
         }
     }

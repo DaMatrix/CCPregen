@@ -1,7 +1,7 @@
 /*
  * Adapted from The MIT License (MIT)
  *
- * Copyright (c) 2020-2020 DaPorkchop_
+ * Copyright (c) 2020-2021 DaPorkchop_
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,
@@ -72,7 +72,7 @@ public class PregenConfig {
             "Slices are 1-cube-tall horizontal planes, columns should be self-explanatory :P",
             "Cannot be updated retroactively on an already running task."
     })
-    public static CoordinateOrder order = CoordinateOrder.SLICES_TOP_TO_BOTTOM;
+    public static CoordinateOrder order = CoordinateOrder.COLUMNS_TOP_TO_BOTTOM;
 
     @Config.Comment({
             "Whether or not cubes should be unloaded immediately after they are generated.",
@@ -80,6 +80,11 @@ public class PregenConfig {
             "benefits for GENERATE."
     })
     public static boolean immediateCubeUnload = false;
+
+    @Config.Comment({
+            "The number of cubes to prefetch at once, assuming the generator supports async terrain generation."
+    })
+    public static int asyncPrefetchCount = 64;
 
     @SubscribeEvent
     public static void onConfigChanged(ConfigChangedEvent.OnConfigChangedEvent event) {
