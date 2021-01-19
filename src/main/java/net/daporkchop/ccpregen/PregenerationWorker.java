@@ -87,8 +87,7 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
     private boolean keepingLoaded;
     private CubePos printedFailWarning;
 
-    private CubePos lastPrefetchPos;
-    private Set<CubePos> alreadyCheckedCubes = new ObjectOpenHashSet<>();
+    private Set<CubePos> doneCubes = new ObjectOpenHashSet<>();
 
     public PregenerationWorker(ICommandSender sender) {
         this.sender = sender;
@@ -101,7 +100,7 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
 
     @Override
     public boolean doWork() {
-        boolean generated;
+        boolean generated = true;
 
         if (active) {
             if (this.world == null) {
@@ -127,7 +126,7 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
                 this.speeds[0] = this.gennedSinceLastNotification * 1000.0d / (double) (System.currentTimeMillis() - this.lastMsg);
 
                 this.sender.sendMessage(new TextComponentString(String.format(
-                        "Generated %d/%d cubes (%.1f cubes/s), position: %s, save queue: %d, pending (async): %d",
+                        "Generated %d/%d cubes (%.1f cubes/s), position: %s, save queue: %d" + (ASYNC_TERRAIN && PregenConfig.asyncPrefetchCount > 0 ? ", pending (async): %d" : ""),
                         PregenState.generated, volume.total, DoubleStream.of(this.speeds).sum() / this.speeds.length, pos, saveQueueSize, this.pendingAsync
                 )));
 
@@ -160,7 +159,7 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
             active = false;
             persistState();
         }
-        return !paused && hasWork;
+        return !paused && hasWork && generated;
     }
 
     private boolean generateCubeAsync(ICubeProviderInternal.Server provider) {
@@ -169,7 +168,7 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
         ICubeGenerator generator = ((ICubicWorldServer) this.world).getCubeGenerator();
         switch (this.poll(generator, pos.getX(), pos.getY(), pos.getZ())) {
             case READY: //generator reports the cube is ready to be generated
-                this.alreadyCheckedCubes.remove(pos);
+                this.doneCubes.remove(pos);
 
                 //generate the cube
                 generated = this.generateCubeBlocking(provider);
@@ -189,7 +188,13 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
         CubePos nextPos = pos;
         this.pendingAsync = 0;
         for (int i = 0; i < PregenConfig.asyncPrefetchCount && (nextPos = order.next(volume, nextPos)) != null; i++) {
-            if (this.poll(generator, nextPos.getX(), nextPos.getY(), nextPos.getZ()) == ICubeGenerator.GeneratorReadyState.WAITING) {
+            if (this.doneCubes.contains(nextPos)) {
+                continue;
+            }
+
+            if (this.poll(generator, nextPos.getX(), nextPos.getY(), nextPos.getZ()) == ICubeGenerator.GeneratorReadyState.READY) {
+                this.doneCubes.add(nextPos);
+            } else {
                 this.pendingAsync++;
             }
         }
