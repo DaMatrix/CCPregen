@@ -187,15 +187,17 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
 
         CubePos nextPos = pos;
         this.pendingAsync = 0;
-        for (int i = 0; i < PregenConfig.asyncPrefetchCount && (nextPos = order.next(volume, nextPos)) != null; i++) {
-            if (this.doneCubes.contains(nextPos)) {
-                continue;
-            }
+        if (nextPos != null) {
+            for (int i = 0; i < PregenConfig.asyncPrefetchCount && (nextPos = order.next(volume, nextPos)) != null; i++) {
+                if (this.doneCubes.contains(nextPos)) {
+                    continue;
+                }
 
-            if (this.poll(generator, nextPos.getX(), nextPos.getY(), nextPos.getZ()) == ICubeGenerator.GeneratorReadyState.READY) {
-                this.doneCubes.add(nextPos);
-            } else {
-                this.pendingAsync++;
+                if (this.poll(generator, nextPos.getX(), nextPos.getY(), nextPos.getZ()) == ICubeGenerator.GeneratorReadyState.READY) {
+                    this.doneCubes.add(nextPos);
+                } else {
+                    this.pendingAsync++;
+                }
             }
         }
 
