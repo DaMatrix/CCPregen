@@ -1,7 +1,7 @@
 /*
  * Adapted from The MIT License (MIT)
  *
- * Copyright (c) 2020-2021 DaPorkchop_
+ * Copyright (c) 2020-2022 DaPorkchop_
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,
@@ -73,6 +73,12 @@ public class PregenConfig {
             "Cannot be updated retroactively on an already running task."
     })
     public static CoordinateOrder order = CoordinateOrder.COLUMNS_TOP_TO_BOTTOM;
+
+    @Config.Comment({
+            "Whether or not cubes should be saved immediately after they are generated.",
+            "This might cause writing to stall occasionally on slow computers, but should generally result in better performance overall."
+    })
+    public static boolean immediateCubeSave = false;
 
     @Config.Comment({
             "Whether or not cubes should be unloaded immediately after they are generated.",

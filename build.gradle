@@ -62,6 +62,9 @@ dependencies {
     deobfProvided ("com.github.OpenCubicChunks:CubicWorldGen:27de56d2f792513873584b2f8fd9f3082fb259ec") {
         transitive = false
     }
+
+    compileOnly "org.projectlombok:lombok:1.18.20"
+    annotationProcessor "org.projectlombok:lombok:1.18.20"
 }
 
 processResources {

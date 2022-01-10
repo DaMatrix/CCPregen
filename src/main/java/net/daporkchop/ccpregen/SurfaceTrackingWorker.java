@@ -24,6 +24,7 @@ import io.github.opencubicchunks.cubicchunks.api.util.CubePos;
 import io.github.opencubicchunks.cubicchunks.api.world.ICube;
 import io.github.opencubicchunks.cubicchunks.api.world.ICubicWorldServer;
 import io.github.opencubicchunks.cubicchunks.api.world.storage.ICubicStorage;
+import io.github.opencubicchunks.cubicchunks.core.server.CubeProviderServer;
 import io.github.opencubicchunks.cubicchunks.core.server.chunkio.AsyncBatchingCubeIO;
 import io.github.opencubicchunks.cubicchunks.core.world.ICubeProviderInternal;
 import io.github.opencubicchunks.cubicchunks.core.world.cube.Cube;
@@ -84,7 +85,7 @@ public class SurfaceTrackingWorker implements WorldWorkerManager.IWorker {
                 this.keepingLoaded = DimensionManager.keepDimensionLoaded(dim, true);
             }
 
-            ICubeProviderInternal.Server provider = (ICubeProviderInternal.Server) ((ICubicWorldServer) this.world).getCubeCache();
+            CubeProviderServer provider = (CubeProviderServer) ((ICubicWorldServer) this.world).getCubeCache();
 
             if (this.allCubePositions == null) {
                 this.sender.sendMessage(new TextComponentString("Loading list of cubes to consider for surface tracking..."));
