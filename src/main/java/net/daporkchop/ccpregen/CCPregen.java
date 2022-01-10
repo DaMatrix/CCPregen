@@ -65,6 +65,7 @@ public class CCPregen {
         event.registerServerCommand(new ResumePregenCommand());
         event.registerServerCommand(new SurfaceTrackingCommand());
 
+        PregenConfig.update();
         PregenState.loadState(event.getServer());
         SurfaceTrackingState.loadState(event.getServer());
     }

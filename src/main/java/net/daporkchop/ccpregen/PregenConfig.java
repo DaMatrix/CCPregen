@@ -34,6 +34,9 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 @Config(modid = CCPregen.MODID)
 @Mod.EventBusSubscriber(modid = CCPregen.MODID)
 public class PregenConfig {
+    @Config.Comment("Internal marker, do not touch!")
+    public static int version = 0;
+
     @Config.Comment("The period (in milliseconds) between progress notification messages.")
     @Config.RangeInt(min = 1)
     public static int notificationInterval = 5000;
@@ -89,14 +92,30 @@ public class PregenConfig {
 
     @Config.Comment({
             "The number of cubes to prefetch at once, assuming the generator supports async terrain generation.",
-            "Set to 0 by default, as most generators don't benefit from this."
+            "Be aware that only a few terrain generators actually benefit from this."
     })
-    public static int asyncPrefetchCount = 0;
+    public static int asyncPrefetchCount = 1024;
 
     @SubscribeEvent
     public static void onConfigChanged(ConfigChangedEvent.OnConfigChangedEvent event) {
         if (event.getModID().equals(CCPregen.MODID)) {
             ConfigManager.sync(CCPregen.MODID, Config.Type.INSTANCE);
         }
+    }
+
+    public static void update() {
+        switch (version) {
+            default:
+                throw new IllegalArgumentException("unknown version: " + version);
+            case 0:
+                //default value of asyncPrefetchCount changed from 0 to 1024
+                if (asyncPrefetchCount == 0) {
+                    asyncPrefetchCount = 1024;
+                }
+            case 1:
+        }
+
+        version = 1;
+        ConfigManager.sync(CCPregen.MODID, Config.Type.INSTANCE);
     }
 }
