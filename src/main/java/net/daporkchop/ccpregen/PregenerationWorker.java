@@ -1,7 +1,7 @@
 /*
  * Adapted from The MIT License (MIT)
  *
- * Copyright (c) 2020-2021 DaPorkchop_
+ * Copyright (c) 2020-2022 DaPorkchop_
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,
@@ -78,6 +78,40 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
         ASYNC_TERRAIN = asyncVersion.compareTo(cubicchunks.getVersion()) <= 0;
     }
 
+    protected static void postGenerateCube(WorldServer world, ICubeProviderInternal.Server provider, Cube cube, boolean unloadAll) {
+        provider.getCubeIO().saveCube(cube);
+        if (PregenConfig.immediateCubeUnload) {
+            try {
+                SINGLETON_ARRAY[0] = cube;
+                if ((boolean) CUBEPROVIDERSERVER_TRYUNLOADCUBE.invoke(provider, SINGLETON_ARRAY)) {
+                    ((XYZMap<Cube>) CUBEPROVIDERSERVER_CUBEMAP.get(provider)).remove(cube);
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            } finally {
+                SINGLETON_ARRAY[0] = null;
+            }
+        }
+        if (unloadAll) {
+            if (PregenConfig.unloadColumns) {
+                ((ICubicWorldServer) world).unloadOldCubes();
+            } else {
+                try {
+                    for (Iterator<Cube> itr = (Iterator<Cube>) CUBEPROVIDERSERVER_CUBESITERATOR.invoke(provider); itr.hasNext(); ) {
+                        SINGLETON_ARRAY[0] = itr.next();
+                        if ((boolean) CUBEPROVIDERSERVER_TRYUNLOADCUBE.invoke(provider, SINGLETON_ARRAY)) {
+                            itr.remove();
+                        }
+                    }
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                } finally {
+                    SINGLETON_ARRAY[0] = null;
+                }
+            }
+        }
+    }
+
     private final ICommandSender sender;
     private long lastMsg = System.currentTimeMillis();
     private final double[] speeds = new double[10];
@@ -146,7 +180,7 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
             }
         }
 
-        boolean hasWork = active && pos != null;
+        boolean hasWork = this.hasWork();
         if (!hasWork) {
             this.sender.sendMessage(new TextComponentString("Generation complete."));
             if (this.world != null) {
@@ -222,37 +256,7 @@ public class PregenerationWorker implements WorldWorkerManager.IWorker {
     }
 
     private void postGenerateCube(ICubeProviderInternal.Server provider, Cube cube) {
-        provider.getCubeIO().saveCube(cube);
-        if (PregenConfig.immediateCubeUnload) {
-            try {
-                SINGLETON_ARRAY[0] = cube;
-                if ((boolean) CUBEPROVIDERSERVER_TRYUNLOADCUBE.invoke(provider, SINGLETON_ARRAY)) {
-                    ((XYZMap<Cube>) CUBEPROVIDERSERVER_CUBEMAP.get(provider)).remove(cube);
-                }
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            } finally {
-                SINGLETON_ARRAY[0] = null;
-            }
-        }
-        if (generated % PregenConfig.unloadCubesInterval == 0L) {
-            if (PregenConfig.unloadColumns) {
-                ((ICubicWorldServer) this.world).unloadOldCubes();
-            } else {
-                try {
-                    for (Iterator<Cube> itr = (Iterator<Cube>) CUBEPROVIDERSERVER_CUBESITERATOR.invoke(provider); itr.hasNext(); ) {
-                        SINGLETON_ARRAY[0] = itr.next();
-                        if ((boolean) CUBEPROVIDERSERVER_TRYUNLOADCUBE.invoke(provider, SINGLETON_ARRAY)) {
-                            itr.remove();
-                        }
-                    }
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                } finally {
-                    SINGLETON_ARRAY[0] = null;
-                }
-            }
-        }
+        postGenerateCube(this.world, provider, cube, generated % PregenConfig.unloadCubesInterval == 0L);
 
         pos = order.next(volume, pos);
         this.gennedSinceLastNotification++;

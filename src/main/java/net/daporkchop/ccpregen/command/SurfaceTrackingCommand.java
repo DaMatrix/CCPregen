@@ -26,43 +26,40 @@ import net.daporkchop.ccpregen.SurfaceTrackingState;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
+import net.minecraft.command.NumberInvalidException;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.text.TextComponentString;
 import net.minecraftforge.server.permission.PermissionAPI;
 
 /**
  * @author DaPorkchop_
  */
-public class StopPregenCommand extends CommandBase {
+public class SurfaceTrackingCommand extends CommandBase {
     @Override
     public String getName() {
-        return "ccpregen_stop";
+        return "ccpregen_surfacetrack";
     }
 
     @Override
     public String getUsage(ICommandSender sender) {
-        return "/ccpregen_stop";
+        return "/ccpregen_surfacetrack [dimension]";
     }
 
     @Override
     public void execute(MinecraftServer server, ICommandSender sender, String[] args) throws CommandException {
-        if (PregenState.active || SurfaceTrackingState.active) {
-            sender.sendMessage(new TextComponentString("Stopping pregeneration..."));
-            PregenState.active = false;
-            PregenState.persistState();
-
-            SurfaceTrackingState.active = false;
-            SurfaceTrackingState.persistState();
-        } else {
-            sender.sendMessage(new TextComponentString("Pregeneration isn't active!"));
+        int dimension = args.length == 0 ? sender.getEntityWorld().provider.getDimension() : parseInt(args[1]);
+        if (!SurfaceTrackingState.startSurfaceTracking(sender, dimension))   {
+            sender.sendMessage(new TextComponentString("A pregeneration task is already running!"));
         }
     }
 
     @Override
     public boolean checkPermission(MinecraftServer server, ICommandSender sender) {
         if (sender instanceof EntityPlayer) {
-            return PermissionAPI.hasPermission((EntityPlayer) sender, CCPregen.MODID + ".command.ccpregen_stop");
+            return PermissionAPI.hasPermission((EntityPlayer) sender, CCPregen.MODID + ".command.ccpregen_surfacetrack");
         } else {
             return super.checkPermission(server, sender);
         }

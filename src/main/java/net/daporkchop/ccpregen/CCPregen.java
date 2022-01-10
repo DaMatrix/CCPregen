@@ -1,7 +1,7 @@
 /*
  * Adapted from The MIT License (MIT)
  *
- * Copyright (c) 2020-2020 DaPorkchop_
+ * Copyright (c) 2020-2022 DaPorkchop_
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,
@@ -25,6 +25,7 @@ import net.daporkchop.ccpregen.command.PregenCommand;
 import net.daporkchop.ccpregen.command.PregenCubesCommand;
 import net.daporkchop.ccpregen.command.ResumePregenCommand;
 import net.daporkchop.ccpregen.command.StopPregenCommand;
+import net.daporkchop.ccpregen.command.SurfaceTrackingCommand;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
@@ -55,18 +56,22 @@ public class CCPregen {
         PermissionAPI.registerNode(MODID + ".command.ccpregen_stop", DefaultPermissionLevel.OP, "Allows to run the /ccpregen_stop command");
         PermissionAPI.registerNode(MODID + ".command.ccpregen_pause", DefaultPermissionLevel.OP, "Allows to run the /ccpregen_pause command");
         PermissionAPI.registerNode(MODID + ".command.ccpregen_resume", DefaultPermissionLevel.OP, "Allows to run the /ccpregen_resume command");
+        PermissionAPI.registerNode(MODID + ".command.ccpregen_surfacetrack", DefaultPermissionLevel.OP, "Allows to run the /ccpregen_surfacetrack command");
 
         event.registerServerCommand(new PregenCommand());
         event.registerServerCommand(new PregenCubesCommand());
         event.registerServerCommand(new StopPregenCommand());
         event.registerServerCommand(new PausePregenCommand());
         event.registerServerCommand(new ResumePregenCommand());
+        event.registerServerCommand(new SurfaceTrackingCommand());
 
         PregenState.loadState(event.getServer());
+        SurfaceTrackingState.loadState(event.getServer());
     }
 
     @EventHandler
     public void serverStopping(FMLServerStoppingEvent event)    {
         PregenState.persistState();
+        SurfaceTrackingState.persistState();
     }
 }
