@@ -1,7 +1,7 @@
 /*
  * Adapted from The MIT License (MIT)
  *
- * Copyright (c) 2020-2021 DaPorkchop_
+ * Copyright (c) 2020-2022 DaPorkchop_
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,
@@ -22,104 +22,82 @@ package net.daporkchop.ccpregen.util;
 
 import io.github.opencubicchunks.cubicchunks.api.util.CubePos;
 
+import java.util.Iterator;
+import java.util.stream.IntStream;
+
 /**
  * @author DaPorkchop_
  */
 public enum CoordinateOrder {
     SLICES_TOP_TO_BOTTOM {
         @Override
-        public CubePos startPos(Volume volume) {
-            return new CubePos(volume.minX, volume.maxY, volume.minZ);
-        }
-
-        @Override
-        public CubePos next(Volume volume, CubePos curr) {
-            int x = curr.getX();
-            int y = curr.getY();
-            int z = curr.getZ();
-            if (++x > volume.maxX) {
-                x = volume.minX;
-                if (++z > volume.maxZ) {
-                    z = volume.minZ;
-                    if (--y < volume.minY) {
-                        return null;
-                    }
-                }
-            }
-            return new CubePos(x, y, z);
+        public Iterator<CubePos> iterator(Volume volume) {
+            return IntStream.rangeClosed(volume.minY, volume.maxY)
+                    .map(y -> volume.maxY - y + volume.minY) //reverse order
+                    .boxed()
+                    .flatMap(y -> IntStream.rangeClosed(volume.minX, volume.maxX).boxed()
+                            .flatMap(x -> IntStream.rangeClosed(volume.minZ, volume.maxZ)
+                                    .mapToObj(z -> new CubePos(x, y, z))))
+                    .iterator();
         }
     },
     SLICES_BOTTOM_TO_TOP {
         @Override
-        public CubePos startPos(Volume volume) {
-            return new CubePos(volume.minX, volume.minY, volume.minZ);
-        }
-
-        @Override
-        public CubePos next(Volume volume, CubePos curr) {
-            int x = curr.getX();
-            int y = curr.getY();
-            int z = curr.getZ();
-            if (++x > volume.maxX) {
-                x = volume.minX;
-                if (++z > volume.maxZ) {
-                    z = volume.minZ;
-                    if (++y > volume.maxY) {
-                        return null;
-                    }
-                }
-            }
-            return new CubePos(x, y, z);
+        public Iterator<CubePos> iterator(Volume volume) {
+            return IntStream.rangeClosed(volume.minY, volume.maxY).boxed()
+                    .flatMap(y -> IntStream.rangeClosed(volume.minX, volume.maxX).boxed()
+                            .flatMap(x -> IntStream.rangeClosed(volume.minZ, volume.maxZ)
+                                    .mapToObj(z -> new CubePos(x, y, z))))
+                    .iterator();
         }
     },
     COLUMNS_TOP_TO_BOTTOM {
         @Override
-        public CubePos startPos(Volume volume) {
-            return new CubePos(volume.minX, volume.maxY, volume.minZ);
-        }
-
-        @Override
-        public CubePos next(Volume volume, CubePos curr) {
-            int x = curr.getX();
-            int y = curr.getY();
-            int z = curr.getZ();
-            if (--y < volume.minY) {
-                y = volume.maxY;
-                if (++x > volume.maxX) {
-                    x = volume.minX;
-                    if (++z > volume.maxZ) {
-                        return null;
-                    }
-                }
-            }
-            return new CubePos(x, y, z);
+        public Iterator<CubePos> iterator(Volume volume) {
+            return IntStream.rangeClosed(volume.minX, volume.maxX).boxed()
+                    .flatMap(x -> IntStream.rangeClosed(volume.minZ, volume.maxZ).boxed()
+                            .flatMap(z -> IntStream.rangeClosed(volume.minY, volume.maxY)
+                                    .map(y -> volume.maxY - y + volume.minY) //reverse order
+                                    .mapToObj(y -> new CubePos(x, y, z))))
+                    .iterator();
         }
     },
     COLUMNS_BOTTOM_TO_TOP {
         @Override
-        public CubePos startPos(Volume volume) {
-            return new CubePos(volume.minX, volume.minY, volume.minZ);
+        public Iterator<CubePos> iterator(Volume volume) {
+            return IntStream.rangeClosed(volume.minX, volume.maxX).boxed()
+                    .flatMap(x -> IntStream.rangeClosed(volume.minZ, volume.maxZ).boxed()
+                            .flatMap(z -> IntStream.rangeClosed(volume.minY, volume.maxY)
+                                    .mapToObj(y -> new CubePos(x, y, z))))
+                    .iterator();
         }
-
+    },
+    HILBERT_3D {
         @Override
-        public CubePos next(Volume volume, CubePos curr) {
-            int x = curr.getX();
-            int y = curr.getY();
-            int z = curr.getZ();
-            if (++y > volume.maxY) {
-                y = volume.minY;
-                if (++x > volume.maxX) {
-                    x = volume.minX;
-                    if (++z > volume.maxZ) {
-                        return null;
-                    }
-                }
-            }
-            return new CubePos(x, y, z);
+        public Iterator<CubePos> iterator(Volume volume) {
+            return Hilbert.hilbert3d(volume.minX, volume.minY, volume.minZ, volume.sizeX(), volume.sizeY(), volume.sizeZ())
+                    .iterator();
+        }
+    },
+    HILBERT_2D_TOP_TO_BOTTOM {
+        @Override
+        public Iterator<CubePos> iterator(Volume volume) {
+            return Hilbert.hilbert2d(volume.minX, volume.minZ, volume.sizeX(), volume.sizeZ())
+                    .flatMap(pos -> IntStream.rangeClosed(volume.minY, volume.maxY)
+                            .map(y -> volume.maxY - y + volume.minY) //reverse order
+                            .mapToObj(y -> new CubePos(pos.x, y, pos.z)))
+                    .iterator();
+        }
+    },
+    HILBERT_2D_BOTTOM_TO_TOP {
+        @Override
+        public Iterator<CubePos> iterator(Volume volume) {
+            return Hilbert.hilbert2d(volume.minX, volume.minZ, volume.sizeX(), volume.sizeZ())
+                    .flatMap(pos -> IntStream.rangeClosed(volume.minY, volume.maxY)
+                            .mapToObj(y -> new CubePos(pos.x, y, pos.z)))
+                    .iterator();
         }
     };
 
-    public abstract CubePos startPos(Volume volume);
-
-    public abstract CubePos next(Volume volume, CubePos curr);
+    public abstract Iterator<CubePos> iterator(Volume volume);
 }

@@ -1,7 +1,7 @@
 /*
  * Adapted from The MIT License (MIT)
  *
- * Copyright (c) 2020-2021 DaPorkchop_
+ * Copyright (c) 2020-2022 DaPorkchop_
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,
@@ -30,6 +30,8 @@ import net.minecraftforge.common.WorldWorkerManager;
 import net.minecraftforge.common.config.Config;
 import net.minecraftforge.common.config.ConfigManager;
 
+import java.util.Iterator;
+
 /**
  * @author DaPorkchop_
  */
@@ -56,26 +58,17 @@ public class PregenState {
     public static int _maxY;
     @Config.Name("maxZ")
     public static int _maxZ;
-    @Config.Name("x")
-    public static int _x;
-    @Config.Name("y")
-    public static int _y;
-    @Config.Name("z")
-    public static int _z;
 
     //these fields are a hack because forge doesn't support long fields for config
     @Config.Name("generated")
     public static String _generated_as_string = ""; //not to be used directly
-    @Deprecated
-    @Config.Name("total")
-    public static String _old_total = ""; //no longer used
 
-    public static CoordinateOrder order = CoordinateOrder.SLICES_TOP_TO_BOTTOM;
+    public static CoordinateOrder order = PregenConfig.order;
 
     @Config.Ignore
     public static Volume volume;
     @Config.Ignore
-    public static CubePos pos;
+    public static Iterator<CubePos> iterator;
     @Config.Ignore
     public static long generated;
 
@@ -99,9 +92,10 @@ public class PregenState {
         volume = new Volume(
                 _minX = min.getX(), _minY = min.getY(), _minZ = min.getZ(),
                 _maxX = max.getX(), _maxY = max.getY(), _maxZ = max.getZ());
-        pos = (order = PregenConfig.order).startPos(volume);
+        order = PregenConfig.order;
 
         generated = 0L;
+        iterator = order.iterator(volume);
 
         persistState();
         WorldWorkerManager.addWorker(new PregenerationWorker(sender));
@@ -110,24 +104,24 @@ public class PregenState {
 
     public static void loadState(ICommandSender sender) {
         if (active) {
+            sender.sendMessage(new TextComponentString("Resuming pregeneration..."));
+
+            //restore non-serialized objects
+            volume = new Volume(_minX, _minY, _minZ, _maxX, _maxY, _maxZ);
             generated = Long.parseLong(_generated_as_string);
 
-            volume = new Volume(_minX, _minY, _minZ, _maxX, _maxY, _maxZ);
-            pos = new CubePos(_x, _y, _z);
+            //restore iterator and seek to last generated position
+            iterator = order.iterator(volume);
+            for (long l = 0L; l < generated; l++) {
+                iterator.next();
+            }
 
-            sender.sendMessage(new TextComponentString("Resuming pregeneration..."));
             WorldWorkerManager.addWorker(new PregenerationWorker(sender));
         }
     }
 
     public static void persistState() {
         _generated_as_string = String.valueOf(generated);
-
-        if (pos != null) {
-            _x = pos.getX();
-            _y = pos.getY();
-            _z = pos.getZ();
-        }
 
         ConfigManager.sync(CCPregen.MODID, Config.Type.INSTANCE);
     }

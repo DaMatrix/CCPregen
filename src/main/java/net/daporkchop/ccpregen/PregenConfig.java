@@ -75,7 +75,7 @@ public class PregenConfig {
             "Slices are 1-cube-tall horizontal planes, columns should be self-explanatory :P",
             "Cannot be updated retroactively on an already running task."
     })
-    public static CoordinateOrder order = CoordinateOrder.COLUMNS_TOP_TO_BOTTOM;
+    public static CoordinateOrder order = CoordinateOrder.HILBERT_2D_TOP_TO_BOTTOM;
 
     @Config.Comment({
             "Whether or not cubes should be saved immediately after they are generated.",
@@ -92,7 +92,9 @@ public class PregenConfig {
 
     @Config.Comment({
             "The number of cubes to prefetch at once, assuming the generator supports async terrain generation.",
-            "Be aware that only a few terrain generators actually benefit from this."
+            "Requires Cubic Chunks 1.12.2-0.0.1175 or newer.",
+            "Be aware that only a few terrain generators actually benefit from this, but it should have no negative effect when used with a generator which does not support it.",
+            "If 0, async prefetching will be disabled."
     })
     public static int asyncPrefetchCount = 1024;
 
@@ -112,6 +114,10 @@ public class PregenConfig {
                 if (asyncPrefetchCount == 0) {
                     asyncPrefetchCount = 1024;
                 }
+
+                //any older version: cancel running pregen task
+                PregenState.active = false;
+                SurfaceTrackingState.active = false;
             case 1:
         }
 
