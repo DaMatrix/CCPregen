@@ -46,6 +46,7 @@ minecraft {
     runDir = "run"
 
     mappings = "stable_39"
+    makeObfSourceJar = false
 }
 
 repositories {
@@ -67,6 +68,7 @@ dependencies {
     annotationProcessor "org.projectlombok:lombok:1.18.20"
 
     testCompile "junit:junit:4.12"
+    testCompile project(path: project.path, configuration: "provided")
 }
 
 processResources {
